@@ -2,7 +2,7 @@
 
 # ResumeAI 🧠📄
 
-**简历信息批量提取系统** — 基于多模型 AI 视觉 API，一键批量提取简历字段，输出结构化 JSON / CSV
+**简历信息批量提取系统** — 基于多模型 AI 视觉 API 的简历信息批量提取工具，支持 **6 大 AI 提供商** + **多 Key 轮询** + **PDF/Word 自动转图片** + **自定义提取字段**，一键批量提取简历字段，输出结构化 JSON / CSV。
 
 ![Python](https://img.shields.io/badge/Python-3.10+-3776AB?logo=python&logoColor=white)
 ![FastAPI](https://img.shields.io/badge/FastAPI-0.115+-009688?logo=fastapi&logoColor=white)
@@ -18,10 +18,17 @@
 - [概述](#概述)
 - [功能特性](#功能特性)
 - [快速开始](#快速开始)
+  - [1. 安装依赖](#1-安装依赖)
+  - [2. 配置](#2-配置)
+  - [3. 启动](#3-启动)
 - [使用指南](#使用指南)
+  - [第一步：添加 API Key](#第一步添加-api-key)
+  - [第二步：批量处理简历](#第二步批量处理简历)
+  - [第三步：自定义提取字段（可选）](#第三步自定义提取字段可选)
+  - [第四步：查看和导出结果](#第四步查看和导出结果)
 - [项目结构](#项目结构)
-- [环境变量](#环境变量)
-- [AI 提供商](#ai-提供商)
+- [环境变量说明](#环境变量说明)
+- [各提供商 Key 获取地址](#各提供商-key-获取地址)
 - [Word 转图片说明](#word-转图片说明)
 - [技术栈](#技术栈)
 
@@ -29,86 +36,121 @@
 
 ## 概述
 
-ResumeAI 是一个面向 HR / 招聘团队的简历信息批量提取工具，支持 **6 大 AI 提供商**、**多 Key 轮询**、**PDF/Word 自动转图片**、**自定义提取字段**。上传文件夹即可全自动处理，结果实时可查，支持 CSV 导出。
+ResumeAI 是一个面向 HR / 招聘团队的简历信息批量提取工具。基于多模型 AI 视觉 API，无需繁琐的模板配置，上传简历文件夹即可全自动批量提取关键信息，结果结构化输出，支持实时查看和 CSV 导出。
 
 ---
 
 ## 功能特性
 
-| 类别 | 功能 |
-|------|------|
-| 🤖 **AI 提供商** | Moonshot / OpenAI / DeepSeek / Anthropic Claude / Google Gemini / 自定义端点 |
-| 🔄 **Key 轮询** | 添加多个 API Key，自动交替使用突破速率限制 |
-| ✅ **Key 检测** | 添加 Key 自动验证 — 🟢 有效 / 🔴 无效 / ⚪ 无法验证 |
-| 📂 **文件处理** | PDF/Word 自动转图片，跳过空白页，支持 JPG/PNG 直接识别 |
-| 📁 **批量处理** | 输入文件夹路径一键扫描 → 转换 → 识别 → 结构化输出 |
-| ✏️ **自定义字段** | 自由增删提取字段，AI 严格按字段列表输出 JSON |
-| 📊 **实时进度** | WebSocket 推送日志流 + 进度条 + 统计卡片 |
-| ⏸️ **暂停/恢复** | 处理中途可随时暂停，随时恢复 |
-| 📤 **CSV 导出** | 动态字段表头，兼容 Excel 打开 |
-| 💾 **数据持久化** | SQLite 存储所有历史记录，失败项支持重试 |
+- **🤖 6 大 AI 提供商**：Moonshot / OpenAI / DeepSeek / Anthropic Claude / Google Gemini / 自定义端点
+- **🔄 多 Key 轮询**：添加多个 API Key，自动交替使用突破速率限制，大幅提升处理吞吐量
+- **✅ Key 可用性检测**：添加 Key 时自动验证——🟢 绿灯有效 / 🔴 红灯无效 / ⚪ 灰灯无法验证
+- **📂 PDF/Word 自动转图片**：上传或扫描文件夹时自动转换为图片格式，智能跳过空白页
+- **📁 文件夹批量处理**：输入文件夹路径一键扫描 → 转换 → 识别，全程自动化
+- **✏️ 自定义提取字段**：自由增删提取字段，AI 严格按字段列表输出 JSON，灵活适配不同业务需求
+- **📊 实时进度监控**：WebSocket 推送日志流 + 进度条 + 统计卡片，处理状态一目了然
+- **⏸️ 暂停/恢复**：处理中途可随时暂停，需要时恢复继续，灵活控制处理节奏
+- **📤 CSV 导出**：动态字段表头，兼容 Excel 直接打开查看
+- **💾 数据持久化**：SQLite 存储所有历史记录，支持对失败项单独重试
 
 ---
 
 ## 快速开始
 
-### 安装
+### 1. 安装依赖
 
 ```bash
 pip install -r requirements.txt
 ```
 
-### 配置
+### 2. 配置
 
-复制 `.env.example` 为 `.env`，生成加密密钥后填入：
+复制 `.env.example` 为 `.env`，按需修改配置：
 
 ```bash
+# 首先生成加密密钥（用于 API Key 加密存储）
 python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
 ```
 
+将输出的密钥填入 `.env`：
+
 ```env
-# .env
+# 并行处理数（建议不超过 Key 数量）
 MAX_CONCURRENT_PROCESSING=3
+
+# 加密密钥（必填，首次使用请运行上面的生成命令）
 ENCRYPTION_KEY=上面命令输出的密钥
 ```
 
-### 启动
+### 3. 启动
 
 ```bash
-# Windows
+# Windows：双击 start.bat 或在命令行运行
 start.bat
 
-# Linux / macOS
+# Linux / macOS：
 chmod +x start.sh && ./start.sh
 ```
 
-打开 **http://localhost:8000**
+启动后访问 **http://localhost:8000** 即可进入 Web 界面。
 
 ---
 
 ## 使用指南
 
-### 1️⃣ 添加 API Key
+### 第一步：添加 API Key
 
-进入 **API Key 管理** → 选择提供商 → 填入 Key → 系统自动检测可用性（🟢 亮起即可用）。建议添加 **2 个以上 Key** 实现轮询加速。
+1. 进入 **API Key 管理** 页面
+2. 选择 AI 提供商（Moonshot / OpenAI / DeepSeek / Claude / Gemini / Custom）
+3. 填入 API Key，点击添加
+4. 系统**自动检测 Key 可用性**，🟢 绿灯亮起即可使用
+5. 建议添加 **2 个以上 Key** 以实现轮询加速，有效突破单 Key 速率限制
 
-### 2️⃣ 批量处理简历
+### 第二步：批量处理简历
 
-**方式一：文件夹扫描（推荐）**
-进入 **上传处理** → 输入简历文件夹路径（如 `D:/简历文件夹`）→ 点击扫描并处理。系统自动：扫描文件 → PDF/Word 转图片 → 去空白页 → 创建任务 → AI 识别。
+**方式一：文件夹批量处理（推荐）**
+
+1. 进入 **上传处理** 页面
+2. 输入简历文件夹路径（如 `D:/简历文件夹`）
+3. 点击 **扫描并处理**，系统自动完成以下流程：
+   - 扫描文件夹内所有 PDF / Word / JPG / PNG 文件
+   - 将 PDF 和 Word 文件转为图片格式（已有图片则跳过）
+   - 智能识别并删除空白页
+   - 创建处理任务 + 自动启动 AI 识别
+   - 实时推送处理进度和日志
 
 **方式二：手动上传**
-点击 **新建任务** → 拖拽文件（支持 JPG/PNG/PDF/DOCX）→ 开始处理。
 
-### 3️⃣ 自定义提取字段（可选）
+1. 点击 **新建任务**
+2. 拖拽文件到上传区（支持 JPG / PNG / PDF / DOCX 格式）
+3. 点击 **开始处理**
 
-进入 **提取设置**，自由增删字段。修改后 AI 提取和 CSV 导出自动适配。
+### 第三步：自定义提取字段（可选）
 
-**默认字段：** 姓名、性别、出生年月、手机号码、最高学历、毕业学校、毕业年份、地区、专业名称、应聘职位
+进入 **提取设置** 页面，自由增删提取字段。修改后 AI 提取结果和 CSV 导出将自动适配更新，无需修改任何代码。
 
-### 4️⃣ 查看与导出
+**默认字段：**
 
-进入 **结果查看** → 搜索 / 筛选 / 查看详情 / 重试失败项 / **导出 CSV**。
+| 字段 | 说明 |
+|------|------|
+| 姓名 | 候选人姓名 |
+| 性别 | 男 / 女 |
+| 出生年月 | 出生日期 |
+| 手机号码 | 联系电话 |
+| 最高学历 | 最高教育程度 |
+| 毕业学校 | 毕业院校名称 |
+| 毕业年份 | 毕业年份 |
+| 地区 | 所在城市 / 地区 |
+| 专业名称 | 所学专业 |
+| 应聘职位 | 目标岗位 |
+
+### 第四步：查看和导出结果
+
+进入 **结果查看** 页面：
+- 🔍 搜索和筛选提取数据
+- 📄 点击 **详情** 查看每条简历的完整提取结果
+- 🔄 失败的记录可单独 **重试**
+- 📥 点击 **导出 CSV** 下载结构化数据，兼容 Excel 打开
 
 ---
 
@@ -140,38 +182,38 @@ Resume Information/
 │   ├── index.html                # SPA 入口
 │   ├── css/styles.css            # 深蓝科技主题
 │   └── js/                       # 前端模块
-├── data/                         # 运行时数据（DB + 上传）
+├── data/                         # 运行时数据（DB + 上传文件）
 ├── requirements.txt
-├── .env
-├── start.bat / start.sh
+├── .env                          # 环境配置
+├── start.bat / start.sh          # 启动脚本
 └── Resume Information.py         # 原始 CLI 脚本（参考）
 ```
 
 ---
 
-## 环境变量
+## 环境变量说明
 
 | 变量 | 说明 | 默认值 |
 |------|------|--------|
-| `HOST` | 监听地址（`0.0.0.0` 允许局域网访问） | `0.0.0.0` |
+| `HOST` | 监听地址，`0.0.0.0` 允许局域网访问 | `0.0.0.0` |
 | `PORT` | 服务端口 | `8000` |
-| `DEBUG` | 调试模式，输出详细日志 | `true` |
+| `DEBUG` | 调试模式，`true` 输出详细日志 | `true` |
 | `DATABASE_URL` | SQLite 数据库路径 | `./data/resume_processor.db` |
 | `UPLOAD_DIR` | 文件上传目录 | `./data/uploads` |
-| `MAX_UPLOAD_SIZE_MB` | 单文件大小上限 | `10` |
+| `MAX_UPLOAD_SIZE_MB` | 单文件大小上限（MB） | `10` |
 | `RATE_LIMIT_TPM` | 每 Key 每分钟 Token 上限 | `32000` |
 | `RATE_LIMIT_RPM` | 每 Key 每分钟请求上限 | `3` |
 | `RATE_LIMIT_TPD` | 每 Key 每日 Token 上限 | `1500000` |
 | `MAX_CONCURRENT_PROCESSING` | 并行处理数 | `3` |
 | `RETRY_MAX_ATTEMPTS` | 失败重试次数 | `3` |
 | `ENCRYPTION_KEY` | API Key 加密密钥 **（必填）** | — |
-| `WEB_PASSWORD` | Web 访问密码（空=不启用） | — |
+| `WEB_PASSWORD` | Web 访问密码（留空=不启用） | — |
 
 ---
 
-## AI 提供商
+## 各提供商 Key 获取地址
 
-| 提供商 | 获取地址 | Key 格式 |
+| 提供商 | 注册地址 | Key 格式 |
 |--------|---------|---------|
 | Moonshot | https://platform.moonshot.cn | `sk-...` |
 | OpenAI | https://platform.openai.com/api-keys | `sk-...` |
@@ -183,21 +225,19 @@ Resume Information/
 
 ## Word 转图片说明
 
-Word 文件需先转为 PDF 再转图片，系统按优先级自动尝试：
+Word 文件需要先转为 PDF 再转为图片，系统按优先级自动尝试以下方式：
 
-1. **docx2pdf** — 需 Microsoft Word + `pip install docx2pdf pywin32`
-2. **win32com** — 需 Microsoft Word + `pip install pywin32`
-3. **LibreOffice** — headless 模式（免费，推荐安装）
+1. **docx2pdf** — 需安装 Microsoft Word + `pip install docx2pdf pywin32`
+2. **win32com** — 需安装 Microsoft Word + `pip install pywin32`
+3. **LibreOffice** — headless 模式转换（免费开源，推荐安装）
 
-无以上工具时，可将 Word **另存为 PDF** 后上传。
+> 💡 如果以上工具均无法使用，可以手动将 Word 文件**另存为 PDF** 后再上传。
 
 ---
 
 ## 技术栈
 
-| 层 | 技术 |
-|----|------|
-| 🖥️ **后端** | Python FastAPI + SQLAlchemy + SQLite + WebSocket |
-| 🌐 **前端** | 原生 HTML / CSS / JS（ES Modules），深蓝科技主题 |
-| 🤖 **AI 集成** | OpenAI SDK + httpx（Anthropic / Gemini 原生 API） |
-| 📄 **文件处理** | PyMuPDF（PDF→图片）、python-docx（Word 读取）、Pillow |
+- **🖥️ 后端**：Python FastAPI + SQLAlchemy + SQLite + WebSocket
+- **🌐 前端**：原生 HTML / CSS / JS（ES Modules），深蓝科技主题
+- **🤖 AI 集成**：OpenAI SDK + httpx（Anthropic / Gemini 原生 API）
+- **📄 文件处理**：PyMuPDF（PDF → 图片）、python-docx（Word 读取）、Pillow（图片处理）
