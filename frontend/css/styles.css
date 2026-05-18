@@ -153,7 +153,18 @@ body::after {
 @keyframes blink { 50% { opacity: 0.2; } }
 
 /* Sidebar footer */
-.sidebar-ft { padding-top: 16px; border-top: 1px solid var(--border); }
+.sidebar-ft { padding-top: 16px; border-top: 1px solid var(--border); display: flex; flex-direction: column; gap: 12px; }
+
+.github-link {
+  display: flex; align-items: center; gap: 8px;
+  color: var(--text-muted); text-decoration: none;
+  font-size: 11px; font-family: var(--font-ui);
+  padding: 4px 0;
+  transition: color var(--transition);
+}
+.github-link svg { flex-shrink: 0; opacity: 0.5; transition: opacity var(--transition); }
+.github-link:hover { color: var(--text-dim); }
+.github-link:hover svg { opacity: 0.85; }
 
 .status-indicator {
   display: flex; align-items: center; gap: 8px;
